@@ -8,11 +8,8 @@ local plr        = Players.LocalPlayer
 local cam        = workspace.CurrentCamera
 local mouse      = plr:GetMouse()
 
-local VERSION = "v1.6"
+local VERSION = "v1.8"
 
--- ============================================================
--- STATE
--- ============================================================
 local FlyOn, NoClipOn, TPOn = false, false, false
 local JumpOn, JumpValue = true, 55
 local SpeedOn, SpeedValue = false, 24
@@ -26,6 +23,7 @@ local EspMode = 1
 local KeyListOn, FreecamOn, FullbrightOn, FpsBoostOn = false, false, false, false
 local SushiVisible = true
 local FlySpeed = 60
+local FreecamSpeed = 50
 local currentTab = 1
 local UNLOADED = false
 local CurrentTheme = "Black"
@@ -35,6 +33,7 @@ local Binds = {
     NoClip = Enum.KeyCode.V,
     TP = Enum.UserInputType.MouseButton3,
     Fullbright = Enum.KeyCode.Z,
+    Freecam = Enum.KeyCode.G,
 }
 
 local bindButtons = {}
@@ -47,7 +46,6 @@ local voidSnapshot = nil
 local savedCollisions = {}
 local freecamPos = Vector3.zero
 local freecamRotX, freecamRotY = 0, 0
-local freecamSpeed = 50
 local freecamSavedPosition = nil
 local fbOriginal = nil
 local fbProps = {
@@ -61,15 +59,13 @@ local triggerLastAttack = 0
 local emoteConn = nil
 local savedEmoteId = nil
 local emoteAnimConn = nil
+local espModeContainer = nil
+local espModeButtons = {}
+local freecamSliderContainer = nil
 
--- Easter egg
 local avatarClickCount, avatarLastClick = 0, 0
 local soonOpened = false
-local soonFrame = nil
 
--- ============================================================
--- THEMES
--- ============================================================
 local THEMES = {
     Black = {
         Bg=Color3.fromRGB(12,12,16), Sidebar=Color3.fromRGB(16,16,21),
@@ -104,12 +100,8 @@ local THEMES = {
 }
 local THEME = {}
 for k, v in pairs(THEMES.Black) do THEME[k] = v end
-
 local HUNTER_COLOR = Color3.fromRGB(255, 60, 60)
 
--- ============================================================
--- GUI ROOT
--- ============================================================
 local gui = Instance.new("ScreenGui")
 gui.Name = "tk_ui_main"
 gui.ResetOnSpawn = false
@@ -159,16 +151,6 @@ logoTitle.Font = Enum.Font.GothamBold
 logoTitle.TextSize = 13
 logoTitle.TextXAlignment = Enum.TextXAlignment.Left
 
-local logoSub = Instance.new("TextLabel", logo)
-logoSub.Size = UDim2.new(1, -40, 0, 14)
-logoSub.Position = UDim2.new(0, 40, 0.5, 0)
-logoSub.BackgroundTransparency = 1
-logoSub.Text = "reborn " .. VERSION
-logoSub.TextColor3 = THEME.Accent
-logoSub.Font = Enum.Font.Gotham
-logoSub.TextSize = 10
-logoSub.TextXAlignment = Enum.TextXAlignment.Left
-
 local content = Instance.new("Frame", main)
 content.Size = UDim2.new(1, -160, 1, 0)
 content.Position = UDim2.new(0, 160, 0, 0)
@@ -188,7 +170,6 @@ pageTitle.Font = Enum.Font.GothamBold
 pageTitle.TextSize = 16
 pageTitle.TextXAlignment = Enum.TextXAlignment.Left
 
--- Settings icon (красивая - Roblox asset)
 local gearBtn = Instance.new("ImageButton", topBar)
 gearBtn.Size = UDim2.new(0, 34, 0, 34)
 gearBtn.Position = UDim2.new(1, -80, 0.5, -17)
@@ -278,36 +259,36 @@ nickLbl.Font = Enum.Font.GothamBold
 nickLbl.TextSize = 12
 nickLbl.TextXAlignment = Enum.TextXAlignment.Left
 
-local tagLbl = Instance.new("TextLabel", footer)
-tagLbl.Size = UDim2.new(1, -180, 0, 14)
-tagLbl.Position = UDim2.new(0, 44, 0.5, 0)
-tagLbl.BackgroundTransparency = 1
-tagLbl.Text = "Nightly build"
-tagLbl.TextColor3 = THEME.Accent
-tagLbl.Font = Enum.Font.Gotham; tagLbl.TextSize = 10
-tagLbl.TextXAlignment = Enum.TextXAlignment.Left
+-- Build под ником — крупнее
+local buildLbl = Instance.new("TextLabel", footer)
+buildLbl.Size = UDim2.new(1, -180, 0, 14)
+buildLbl.Position = UDim2.new(0, 44, 0.5, 0)
+buildLbl.BackgroundTransparency = 1
+buildLbl.Text = "Build: Nightly"
+buildLbl.TextColor3 = THEME.Accent
+buildLbl.Font = Enum.Font.GothamBold
+buildLbl.TextSize = 13
+buildLbl.TextXAlignment = Enum.TextXAlignment.Left
 
+-- Version справа
 local versionLbl = Instance.new("TextLabel", footer)
-versionLbl.Size = UDim2.new(0, 120, 1, 0)
-versionLbl.Position = UDim2.new(1, -130, 0, 0)
+versionLbl.Size = UDim2.new(0, 180, 1, 0)
+versionLbl.Position = UDim2.new(1, -190, 0, 0)
 versionLbl.BackgroundTransparency = 1
 versionLbl.Text = VERSION
 versionLbl.TextColor3 = THEME.Accent
 versionLbl.Font = Enum.Font.GothamBold
-versionLbl.TextSize = 14
+versionLbl.TextSize = 18
 versionLbl.TextXAlignment = Enum.TextXAlignment.Right
 
--- ============================================================
--- EASTER EGG OVERLAY (SOON... Upd 2.0 DOLBAEB)
--- ============================================================
-soonFrame = Instance.new("Frame", main)
+-- SOON OVERLAY
+local soonFrame = Instance.new("Frame", main)
 soonFrame.Size = UDim2.new(1, 0, 1, 0)
 soonFrame.BackgroundColor3 = Color3.fromRGB(0,0,0)
 soonFrame.BackgroundTransparency = 0.15
 soonFrame.BorderSizePixel = 0
 soonFrame.ZIndex = 999
 soonFrame.Visible = false
-
 local soonTitle = Instance.new("TextLabel", soonFrame)
 soonTitle.Size = UDim2.new(1, -20, 1, -20)
 soonTitle.Position = UDim2.new(0, 10, 0, 10)
@@ -319,23 +300,15 @@ soonTitle.TextScaled = true
 soonTitle.TextStrokeTransparency = 0
 soonTitle.TextStrokeColor3 = Color3.fromRGB(140,120,250)
 soonTitle.ZIndex = 1000
-local soonScale = Instance.new("UITextSizeConstraint", soonTitle)
-soonScale.MaxTextSize = 140
-soonScale.MinTextSize = 20
-
 task.spawn(function()
     while not UNLOADED do
         if soonFrame.Visible then
             soonTitle.TextColor3 = Color3.fromRGB(
-                200 + math.random(0, 55),
-                200 + math.random(0, 55),
-                200 + math.random(0, 55)
-            )
+                200 + math.random(0,55), 200 + math.random(0,55), 200 + math.random(0,55))
         end
         task.wait(0.1)
     end
 end)
-
 avatar.MouseButton1Click:Connect(function()
     local now = tick()
     if now - avatarLastClick > 1.5 then avatarClickCount = 0 end
@@ -348,12 +321,10 @@ avatar.MouseButton1Click:Connect(function()
     end
 end)
 
--- ============================================================
--- SETTINGS PANEL
--- ============================================================
+-- SETTINGS
 local settingsPanel = Instance.new("Frame", main)
-settingsPanel.Size = UDim2.new(0, 360, 0, 440)
-settingsPanel.Position = UDim2.new(0.5, -180, 0.5, -220)
+settingsPanel.Size = UDim2.new(0, 360, 0, 340)
+settingsPanel.Position = UDim2.new(0.5, -180, 0.5, -170)
 settingsPanel.BackgroundColor3 = THEME.Bg
 settingsPanel.BorderSizePixel = 0
 settingsPanel.ZIndex = 500
@@ -424,46 +395,9 @@ UIS.InputEnded:Connect(function(i)
     if i.UserInputType == Enum.UserInputType.MouseButton1 then setDrag = false end
 end)
 
-local scaleLabel = Instance.new("TextLabel", settingsPanel)
-scaleLabel.Size = UDim2.new(1, -40, 0, 20)
-scaleLabel.Position = UDim2.new(0, 20, 0, 110)
-scaleLabel.BackgroundTransparency = 1
-scaleLabel.Text = "Menu Scale"
-scaleLabel.TextColor3 = THEME.Text
-scaleLabel.Font = Enum.Font.GothamBold; scaleLabel.TextSize = 12
-scaleLabel.TextXAlignment = Enum.TextXAlignment.Left
-scaleLabel.ZIndex = 502
-
-local scaleOptions = {75, 100, 125}
-local scaleButtons = {}
-for i, opt in ipairs(scaleOptions) do
-    local b = Instance.new("TextButton", settingsPanel)
-    b.Size = UDim2.new(0, 90, 0, 34)
-    b.Position = UDim2.new(0, 20 + (i-1)*105, 0, 138)
-    b.BackgroundColor3 = (opt == 100) and THEME.SidebarActive or THEME.Card
-    b.Text = opt .. "%"
-    b.TextColor3 = (opt == 100) and THEME.Text or THEME.TextDim
-    b.Font = Enum.Font.GothamBold; b.TextSize = 12
-    b.BorderSizePixel = 0
-    b.ZIndex = 502
-    Instance.new("UICorner", b).CornerRadius = UDim.new(0, 8)
-    b.MouseButton1Click:Connect(function()
-        local s = opt / 100
-        main.Size = UDim2.new(0, 780 * s, 0, 500 * s)
-        main.Position = UDim2.new(0.5, -390 * s, 0.5, -250 * s)
-        for _, other in ipairs(scaleButtons) do
-            other.BackgroundColor3 = THEME.Card
-            other.TextColor3 = THEME.TextDim
-        end
-        b.BackgroundColor3 = THEME.SidebarActive
-        b.TextColor3 = THEME.Text
-    end)
-    table.insert(scaleButtons, b)
-end
-
 local themeLabel = Instance.new("TextLabel", settingsPanel)
 themeLabel.Size = UDim2.new(1, -40, 0, 20)
-themeLabel.Position = UDim2.new(0, 20, 0, 190)
+themeLabel.Position = UDim2.new(0, 20, 0, 110)
 themeLabel.BackgroundTransparency = 1
 themeLabel.Text = "Theme"
 themeLabel.TextColor3 = THEME.Text
@@ -477,7 +411,7 @@ local themeButtons = {}
 for i, opt in ipairs(themeOptions) do
     local b = Instance.new("TextButton", settingsPanel)
     b.Size = UDim2.new(0, 100, 0, 34)
-    b.Position = UDim2.new(0, 20 + (i-1)*105, 0, 218)
+    b.Position = UDim2.new(0, 20 + (i-1)*105, 0, 138)
     b.BackgroundColor3 = THEME.Card
     b.Text = themeRuNames[opt]
     b.TextColor3 = THEME.TextDim
@@ -485,15 +419,13 @@ for i, opt in ipairs(themeOptions) do
     b.BorderSizePixel = 0
     b.ZIndex = 502
     Instance.new("UICorner", b).CornerRadius = UDim.new(0, 8)
-    b.MouseButton1Click:Connect(function()
-        applyTheme(opt)
-    end)
+    b.MouseButton1Click:Connect(function() applyTheme(opt) end)
     table.insert(themeButtons, b)
 end
 
 local unloadBtn = Instance.new("TextButton", settingsPanel)
 unloadBtn.Size = UDim2.new(1, -40, 0, 38)
-unloadBtn.Position = UDim2.new(0, 20, 0, 270)
+unloadBtn.Position = UDim2.new(0, 20, 0, 190)
 unloadBtn.BackgroundColor3 = Color3.fromRGB(120, 40, 50)
 unloadBtn.Text = "Полная выгрузка скрипта"
 unloadBtn.TextColor3 = Color3.fromRGB(255, 200, 200)
@@ -513,16 +445,12 @@ closeSettings.BorderSizePixel = 0
 closeSettings.ZIndex = 502
 Instance.new("UICorner", closeSettings).CornerRadius = UDim.new(0, 8)
 closeSettings.MouseButton1Click:Connect(function() settingsPanel.Visible = false end)
-
 gearBtn.MouseButton1Click:Connect(function() settingsPanel.Visible = not settingsPanel.Visible end)
 
--- ============================================================
--- SUSHI BUTTON
--- ============================================================
+-- SUSHI
 local sushiGui = Instance.new("ScreenGui")
 sushiGui.Name = "tk_sushi"; sushiGui.ResetOnSpawn = false
 sushiGui.DisplayOrder = 6; sushiGui.Parent = plr.PlayerGui
-
 local sushi = Instance.new("TextButton")
 sushi.Size = UDim2.new(0, 52, 0, 52)
 sushi.Position = UDim2.new(1, -76, 0.5, -26)
@@ -534,29 +462,28 @@ Instance.new("UICorner", sushi).CornerRadius = UDim.new(1, 0)
 local sushiStroke = Instance.new("UIStroke", sushi)
 sushiStroke.Color = THEME.Accent; sushiStroke.Thickness = 2
 
--- ============================================================
 -- KEYBIND LIST
--- ============================================================
 local keyGui = Instance.new("ScreenGui")
 keyGui.Name = "tk_keys"; keyGui.ResetOnSpawn = false
 keyGui.DisplayOrder = 5; keyGui.Parent = plr.PlayerGui
-
 local keyFrame = Instance.new("Frame")
-keyFrame.Size = UDim2.new(0, 200, 0, 150)
-keyFrame.Position = UDim2.new(0, 20, 0.5, -75)
+keyFrame.Size = UDim2.new(0, 200, 0, 30)
+keyFrame.AutomaticSize = Enum.AutomaticSize.Y
+keyFrame.Position = UDim2.new(0, 20, 0.5, -85)
 keyFrame.BackgroundColor3 = THEME.Bg
 keyFrame.BorderSizePixel = 0
 keyFrame.Active = true; keyFrame.Visible = false
 keyFrame.Parent = keyGui
 Instance.new("UICorner", keyFrame).CornerRadius = UDim.new(0, 10)
-local keyStroke = Instance.new("UIStroke", keyFrame)
-keyStroke.Color = THEME.Border; keyStroke.Thickness = 1
+Instance.new("UIStroke", keyFrame).Color = THEME.Border
+local keyPad = Instance.new("UIPadding", keyFrame)
+keyPad.PaddingBottom = UDim.new(0, 6)
 
 local keyTitle = Instance.new("Frame", keyFrame)
 keyTitle.Size = UDim2.new(1, 0, 0, 26)
 keyTitle.BackgroundColor3 = THEME.Sidebar
 keyTitle.BorderSizePixel = 0
-
+keyTitle.ZIndex = 2
 local keyTitleTxt = Instance.new("TextLabel", keyTitle)
 keyTitleTxt.Size = UDim2.new(1, -16, 1, 0)
 keyTitleTxt.Position = UDim2.new(0, 12, 0, 0)
@@ -568,9 +495,10 @@ keyTitleTxt.TextSize = 11
 keyTitleTxt.TextXAlignment = Enum.TextXAlignment.Left
 
 local keyRows = Instance.new("Frame", keyFrame)
-keyRows.Size = UDim2.new(1, -12, 1, -34)
+keyRows.Size = UDim2.new(1, -12, 0, 0)
 keyRows.Position = UDim2.new(0, 6, 0, 30)
 keyRows.BackgroundTransparency = 1
+keyRows.AutomaticSize = Enum.AutomaticSize.Y
 Instance.new("UIListLayout", keyRows).Padding = UDim.new(0, 4)
 
 local kDrag, kDragStart, kStartPos = false, nil, nil
@@ -609,13 +537,14 @@ local function addKeyRow(name, bindGetter, stateGetter)
     kl.Text = ""; kl.TextColor3 = THEME.TextDim
     kl.Font = Enum.Font.Gotham; kl.TextSize = 11
     kl.TextXAlignment = Enum.TextXAlignment.Right
-    table.insert(keyListData, {row=row, nl=nl, kl=kl, bind=bindGetter, state=stateGetter})
+    table.insert(keyListData, {row=row, nl=nl, kl=kl, bind=bindGetter, state=stateGetter, name=name})
 end
 
 addKeyRow("Menu", function() return Enum.KeyCode.RightShift end, function() return menuOpen end)
 addKeyRow("Fly", function() return Binds.Fly end, function() return FlyOn end)
 addKeyRow("NoClip", function() return Binds.NoClip end, function() return NoClipOn end)
 addKeyRow("TP", function() return Binds.TP end, function() return TPOn end)
+addKeyRow("Freecam", function() return Binds.Freecam end, function() return FreecamOn end)
 addKeyRow("Fullbright", function() return Binds.Fullbright end, function() return FullbrightOn end)
 
 local function bindName(b)
@@ -633,22 +562,25 @@ local function refreshKeyList()
     for _, d in ipairs(keyListData) do
         local key = d.bind()
         d.kl.Text = bindName(key)
-        local active = d.state() or isPressed(key)
-        if active then
-            d.row.BackgroundColor3 = THEME.SidebarActive
-            d.nl.TextColor3 = THEME.Accent
-            d.kl.TextColor3 = THEME.Text
+        if d.name ~= "Menu" and key == Enum.KeyCode.Unknown then
+            d.row.Visible = false
         else
-            d.row.BackgroundColor3 = THEME.Row
-            d.nl.TextColor3 = THEME.TextDim
-            d.kl.TextColor3 = THEME.TextDim
+            d.row.Visible = true
+            local active = d.state() or isPressed(key)
+            if active then
+                d.row.BackgroundColor3 = THEME.SidebarActive
+                d.nl.TextColor3 = THEME.Accent
+                d.kl.TextColor3 = THEME.Text
+            else
+                d.row.BackgroundColor3 = THEME.Row
+                d.nl.TextColor3 = THEME.TextDim
+                d.kl.TextColor3 = THEME.TextDim
+            end
         end
     end
 end
 
--- ============================================================
 -- UI BUILDERS
--- ============================================================
 local currentCardSide = "Left"
 local function newCard(title)
     local side = currentCardSide == "Left" and leftCol or rightCol
@@ -660,8 +592,7 @@ local function newCard(title)
     card.BorderSizePixel = 0
     card.Parent = side
     Instance.new("UICorner", card).CornerRadius = UDim.new(0, 10)
-    local stroke = Instance.new("UIStroke", card)
-    stroke.Color = THEME.CardBorder; stroke.Thickness = 1
+    Instance.new("UIStroke", card).Color = THEME.CardBorder
     local pad = Instance.new("UIPadding", card)
     pad.PaddingTop = UDim.new(0, 10)
     pad.PaddingBottom = UDim.new(0, 10)
@@ -844,22 +775,16 @@ local function addButton(card, label, cb)
     return btn
 end
 
--- ESP MODE SELECTOR CONTAINER (для анимации выезда)
-local espModeContainer = nil
-local espModeButtons = {}
-
 local function buildEspModeButtons(parent)
     espModeContainer = Instance.new("Frame", parent)
     espModeContainer.Size = UDim2.new(1, 0, 0, EspOn and 30 or 0)
     espModeContainer.BackgroundTransparency = 1
     espModeContainer.ClipsDescendants = true
     espModeContainer.Visible = EspOn
-
     local layout = Instance.new("UIListLayout", espModeContainer)
     layout.FillDirection = Enum.FillDirection.Horizontal
     layout.Padding = UDim.new(0, 6)
-
-    local labels = {"Mode 1", "Mode 2", "Mode 3"}
+    local labels = {"Mode 1", "Soon 2", "Soon 3"}
     for i, name in ipairs(labels) do
         local b = Instance.new("TextButton", espModeContainer)
         b.Size = UDim2.new(0, 84, 1, 0)
@@ -869,23 +794,24 @@ local function buildEspModeButtons(parent)
         b.Font = Enum.Font.GothamBold; b.TextSize = 11
         b.BorderSizePixel = 0
         Instance.new("UICorner", b).CornerRadius = UDim.new(0, 6)
-        b.MouseButton1Click:Connect(function()
-            EspMode = i
-            for j, other in ipairs(espModeButtons) do
-                other.BackgroundColor3 = (j == i) and THEME.SidebarActive or THEME.Card
-                other.TextColor3 = (j == i) and THEME.Text or THEME.TextDim
-            end
-            -- очистить всё и заново
-            for _, d in pairs(espData) do
-                pcall(function()
-                    if d.hl then d.hl:Destroy() end
-                    if d.bb then d.bb:Destroy() end
-                    if d.box then d.box:Destroy() end
-                    if d.hpBar then d.hpBar:Destroy() end
+        if i == 1 then
+            b.MouseButton1Click:Connect(function()
+                EspMode = 1
+                for j, other in ipairs(espModeButtons) do
+                    other.BackgroundColor3 = (j == 1) and THEME.SidebarActive or THEME.Card
+                    other.TextColor3 = (j == 1) and THEME.Text or THEME.TextDim
+                end
+                clearEsp()
+            end)
+        else
+            b.MouseButton1Click:Connect(function()
+                local orig = b.BackgroundColor3
+                b.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+                task.delay(0.15, function()
+                    if b and b.Parent then b.BackgroundColor3 = orig end
                 end)
-            end
-            espData = {}
-        end)
+            end)
+        end
         espModeButtons[i] = b
     end
 end
@@ -905,9 +831,45 @@ local function animateEspModes(show)
     end
 end
 
--- ============================================================
+local function buildFreecamSlider(parent)
+    freecamSliderContainer = Instance.new("Frame", parent)
+    freecamSliderContainer.Size = UDim2.new(1, 0, 0, FreecamOn and 34 or 0)
+    freecamSliderContainer.BackgroundTransparency = 1
+    freecamSliderContainer.ClipsDescendants = true
+    freecamSliderContainer.Visible = FreecamOn
+    local row = Instance.new("TextButton", freecamSliderContainer)
+    row.Size = UDim2.new(1, 0, 0, 34)
+    row.BackgroundColor3 = THEME.Row
+    row.Text = ""; row.AutoButtonColor = false
+    row.BorderSizePixel = 0
+    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 7)
+    local lbl = Instance.new("TextLabel", row)
+    lbl.Size = UDim2.new(0.4, 0, 1, 0); lbl.Position = UDim2.new(0, 12, 0, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = "Camera Speed"; lbl.TextColor3 = THEME.Text
+    lbl.Font = Enum.Font.Gotham; lbl.TextSize = 12
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    makeSlider(row, UDim2.new(1, -150, 0.5, -8), UDim2.new(0, 140, 0, 16), 10, 200, FreecamSpeed, function(v)
+        FreecamSpeed = v
+    end)
+end
+
+local function animateFreecamSlider(show)
+    if not freecamSliderContainer then return end
+    if show then
+        freecamSliderContainer.Visible = true
+        Tween:Create(freecamSliderContainer, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+            {Size = UDim2.new(1, 0, 0, 34)}):Play()
+    else
+        Tween:Create(freecamSliderContainer, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+            {Size = UDim2.new(1, 0, 0, 0)}):Play()
+        task.delay(0.25, function()
+            if freecamSliderContainer and not FreecamOn then freecamSliderContainer.Visible = false end
+        end)
+    end
+end
+
 -- CATEGORIES
--- ============================================================
 local categories = {
     {name="Movement", icon="M"},
     {name="Combat",   icon="C"},
@@ -915,14 +877,12 @@ local categories = {
     {name="Misc",     icon="X"},
     {name="Client",   icon="S"},
 }
-
 local catButtons = {}
 local catHolder = Instance.new("Frame", sidebar)
 catHolder.Size = UDim2.new(1, -16, 1, -84)
 catHolder.Position = UDim2.new(0, 8, 0, 72)
 catHolder.BackgroundTransparency = 1
 Instance.new("UIListLayout", catHolder).Padding = UDim.new(0, 4)
-
 for i, cat in ipairs(categories) do
     local btn = Instance.new("TextButton", catHolder)
     btn.Size = UDim2.new(1, 0, 0, 34)
@@ -973,20 +933,15 @@ function setTab(idx)
     if loaders[idx] then pcall(loaders[idx]) end
 end
 
--- ============================================================
--- THEME APPLIER
--- ============================================================
 function applyTheme(name)
     if not THEMES[name] then return end
     CurrentTheme = name
     for k, v in pairs(THEMES[name]) do THEME[k] = v end
-
     main.BackgroundColor3 = THEME.Bg
     mainStroke.Color = THEME.Border
     sidebar.BackgroundColor3 = THEME.Sidebar
     logoIcon.BackgroundColor3 = THEME.Accent
     logoTitle.TextColor3 = THEME.Text
-    logoSub.TextColor3 = THEME.Accent
     pageTitle.TextColor3 = THEME.Text
     gearBtn.BackgroundColor3 = THEME.Card
     gearBtn.ImageColor3 = THEME.Text
@@ -997,13 +952,12 @@ function applyTheme(name)
     footerStroke.Color = THEME.CardBorder
     avatar.BackgroundColor3 = THEME.ControlBg
     nickLbl.TextColor3 = THEME.Text
-    tagLbl.TextColor3 = THEME.Accent
+    buildLbl.TextColor3 = THEME.Accent
     versionLbl.TextColor3 = THEME.Accent
     sushi.BackgroundColor3 = THEME.Bg
     sushi.TextColor3 = THEME.Accent
     sushiStroke.Color = THEME.Accent
     keyFrame.BackgroundColor3 = THEME.Bg
-    keyStroke.Color = THEME.Border
     keyTitle.BackgroundColor3 = THEME.Sidebar
     keyTitleTxt.TextColor3 = THEME.TextDim
     settingsPanel.BackgroundColor3 = THEME.Bg
@@ -1013,12 +967,9 @@ function applyTheme(name)
     bigTitle.TextColor3 = THEME.Accent
     creditsLabel.TextColor3 = THEME.Text
     creditsLabel2.TextColor3 = THEME.TextDim
-    scaleLabel.TextColor3 = THEME.Text
     themeLabel.TextColor3 = THEME.Text
     closeSettings.BackgroundColor3 = THEME.Card
     closeSettings.TextColor3 = THEME.Text
-
-    -- Theme buttons
     for i, b in ipairs(themeButtons) do
         local optName = themeOptions[i]
         if optName == name then
@@ -1029,23 +980,10 @@ function applyTheme(name)
             b.TextColor3 = THEME.TextDim
         end
     end
-
-    -- Scale buttons
-    for _, b in ipairs(scaleButtons) do
-        if b.BackgroundColor3 ~= THEME.SidebarActive then
-            b.BackgroundColor3 = THEME.Card
-            b.TextColor3 = THEME.TextDim
-        end
-    end
-
-    -- Reload current tab to refresh colors of all cards
     setTab(currentTab)
     refreshKeyList()
 end
 
--- ============================================================
--- HELPERS
--- ============================================================
 local function getChar() return plr.Character end
 local function getHRP()
     local c = getChar()
@@ -1062,9 +1000,6 @@ local function bindMatches(bind, input)
     return false
 end
 
--- ============================================================
--- NOCLIP / TP / JUMP / FLY / SPEED / FREECAM / FULLBRIGHT / FPS
--- ============================================================
 local function setNoClip(on)
     NoClipOn = on
     local char = getChar(); if not char then return end
@@ -1209,11 +1144,11 @@ local function updateFreecam(dt)
     if UIS:IsKeyDown(Enum.KeyCode.D) then mv = mv + rv end
     if UIS:IsKeyDown(Enum.KeyCode.Space) then mv = mv + Vector3.yAxis end
     if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then mv = mv - Vector3.yAxis end
-    if mv.Magnitude > 0 then freecamPos = freecamPos + mv.Unit * freecamSpeed * dt end
+    if mv.Magnitude > 0 then freecamPos = freecamPos + mv.Unit * FreecamSpeed * dt end
     if not menuOpen then
         local d = UIS:GetMouseDelta()
-        freecamRotY = freecamRotY - d.X * 0.003
-        freecamRotX = math.clamp(freecamRotX - d.Y * 0.003, -math.rad(89), math.rad(89))
+        freecamRotY = freecamRotY + d.X * 0.004
+        freecamRotX = math.clamp(freecamRotX - d.Y * 0.004, -math.rad(89), math.rad(89))
     end
     cam.CFrame = CFrame.new(freecamPos) * CFrame.Angles(freecamRotX, freecamRotY, 0)
 end
@@ -1231,7 +1166,6 @@ local function setFullbright(on)
         end
     end
 end
-
 local function setFpsBoost(on)
     FpsBoostOn = on
     if on then
@@ -1256,9 +1190,6 @@ local function setFpsBoost(on)
     end
 end
 
--- ============================================================
--- HUNTER DETECTION
--- ============================================================
 local HUNTER_KEYWORDS = {"hunter","killer","murderer","monster","slasher","chaser","jason","michael","ghost","demon"}
 local WEAPON_KEYWORDS = {"knife","axe","machete","sword","sickle","scythe","weapon","blade","cleaver","hammer"}
 local function hasWeapon(container)
@@ -1300,7 +1231,6 @@ local function isHunter(p)
     if hasWeapon(p:FindFirstChild("Backpack")) then return true end
     return false
 end
-
 local function getNearestKiller(maxRange)
     local hrp = getHRP(); if not hrp then return nil end
     local nearest, nearestDist = nil, math.huge
@@ -1368,9 +1298,6 @@ local function updateAutoThrow()
     pcall(function() bomb:Activate() end)
 end
 
--- ============================================================
--- ANTI FLASH
--- ============================================================
 local FLASH_KEYWORDS = {"flash","blind","stun","white","fade","shake"}
 local function cleanFlashObject(obj)
     if not obj or not AntiFlashOn then return end
@@ -1383,13 +1310,6 @@ local function cleanFlashObject(obj)
                 if obj:IsA("TextLabel") then obj.TextTransparency = 1 end
             end)
             return
-        end
-    end
-    if obj:IsA("Frame") then
-        local c = obj.BackgroundColor3
-        if obj.Size.X.Scale >= 0.95 and obj.Size.Y.Scale >= 0.95
-           and c.R > 0.9 and c.G > 0.9 and c.B > 0.9 then
-            pcall(function() obj.BackgroundTransparency = 1 end)
         end
     end
 end
@@ -1419,9 +1339,6 @@ local function setAntiFlash(on)
     end
 end
 
--- ============================================================
--- EMOTE
--- ============================================================
 local function setEmoteRun(on)
     EmoteRunOn = on
     if emoteAnimConn then emoteAnimConn:Disconnect(); emoteAnimConn = nil end
@@ -1451,35 +1368,20 @@ local function setEmoteRun(on)
     end
 end
 
--- ============================================================
--- ESP (3 MODES)
--- ============================================================
 local function clearEspPlayer(p)
     local d = espData[p]; if not d then return end
     pcall(function()
         if d.hl then d.hl:Destroy() end
         if d.bb then d.bb:Destroy() end
-        if d.box then d.box:Destroy() end
-        if d.hpBar then d.hpBar:Destroy() end
-        if d.nameLbl then d.nameLbl:Destroy() end
     end)
     espData[p] = nil
 end
-
 local function clearEsp()
     for p, _ in pairs(espData) do clearEspPlayer(p) end
     espData = {}
 end
 
-local function makeBoxLine(parent)
-    local l = Instance.new("Frame", parent)
-    l.BackgroundColor3 = Color3.new(1,1,1)
-    l.BorderSizePixel = 0
-    return l
-end
-
-local function updateEsp()
-    if not EspOn then return end
+local function updateEspMode1()
     local myHRP = getHRP()
     for _, p in ipairs(Players:GetPlayers()) do
         if p ~= plr and p.Character then
@@ -1489,176 +1391,50 @@ local function updateEsp()
             if hum and hum.Health > 0 and hrp then
                 local d = espData[p]
                 if not d then
-                    d = {
-                        char = char,
-                        hl=nil, bb=nil, tl=nil,
-                        box=nil, corners=nil, hpBar=nil, hpFill=nil,
-                        modeBuilt = EspMode,
-                    }
+                    d = {char=char}
                     espData[p] = d
                 end
-
-                -- если режим сменился — пересоздаём
-                if d.modeBuilt ~= EspMode then
-                    clearEspPlayer(p)
-                    d = {char = char, modeBuilt = EspMode}
-                    espData[p] = d
+                local col = isHunter(p) and HUNTER_COLOR or Color3.fromRGB(255,255,255)
+                if not d.hl then
+                    d.hl = Instance.new("Highlight")
+                    d.hl.FillTransparency = 0.55
+                    d.hl.OutlineTransparency = 0
+                    d.hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                    d.hl.Parent = char
                 end
-
-                local hunter = isHunter(p)
-                local col = hunter and HUNTER_COLOR or Color3.fromRGB(255,255,255)
-
-                -- Mode 1: Highlight + Name
-                if EspMode == 1 then
-                    if not d.hl then
-                        d.hl = Instance.new("Highlight")
-                        d.hl.FillTransparency = 0.55
-                        d.hl.OutlineTransparency = 0
-                        d.hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-                        d.hl.Parent = char
-                    end
-                    d.hl.Adornee = char
-                    d.hl.FillColor = col
-                    d.hl.OutlineColor = col
-
-                    if not d.bb then
-                        d.bb = Instance.new("BillboardGui")
-                        d.bb.Size = UDim2.new(0, 140, 0, 24)
-                        d.bb.StudsOffset = Vector3.new(0, 3, 0)
-                        d.bb.AlwaysOnTop = true
-                        d.bb.Adornee = hrp
-                        d.bb.Parent = char
-                        d.tl = Instance.new("TextLabel", d.bb)
-                        d.tl.Size = UDim2.new(1, 0, 1, 0)
-                        d.tl.BackgroundTransparency = 1
-                        d.tl.Font = Enum.Font.Gotham
-                        d.tl.TextSize = 12
-                        d.tl.TextStrokeTransparency = 0.2
-                    end
+                d.hl.Adornee = char
+                d.hl.FillColor = col
+                d.hl.OutlineColor = col
+                if not d.bb then
+                    d.bb = Instance.new("BillboardGui")
+                    d.bb.Size = UDim2.new(0, 140, 0, 24)
+                    d.bb.StudsOffset = Vector3.new(0, 3, 0)
+                    d.bb.AlwaysOnTop = true
                     d.bb.Adornee = hrp
-                    d.tl.TextColor3 = col
-                    local distText = myHRP and (" [" .. math.floor((myHRP.Position - hrp.Position).Magnitude) .. "m]") or ""
-                    d.tl.Text = p.Name .. distText .. (hunter and " [HUNTER]" or "")
-
-                -- Mode 2: Corner Box + HP bar + Name
-                elseif EspMode == 2 then
-                    if not d.box then
-                        d.box = Instance.new("Frame", gui)
-                        d.box.BackgroundTransparency = 1
-                        d.box.BorderSizePixel = 0
-                        d.box.ZIndex = 5
-                        d.corners = {}
-                        for i=1,4 do d.corners[i] = makeBoxLine(d.box) end
-                        d.hpBar = Instance.new("Frame", gui)
-                        d.hpBar.BorderSizePixel = 0
-                        d.hpBar.BackgroundColor3 = Color3.fromRGB(20,20,20)
-                        d.hpBar.ZIndex = 5
-                        d.hpFill = Instance.new("Frame", d.hpBar)
-                        d.hpFill.BorderSizePixel = 0
-                        d.hpFill.ZIndex = 6
-                        d.bb = Instance.new("BillboardGui")
-                        d.bb.Size = UDim2.new(0, 140, 0, 20)
-                        d.bb.StudsOffset = Vector3.new(0, 3.2, 0)
-                        d.bb.AlwaysOnTop = true
-                        d.bb.Adornee = hrp
-                        d.bb.Parent = char
-                        d.tl = Instance.new("TextLabel", d.bb)
-                        d.tl.Size = UDim2.new(1, 0, 1, 0)
-                        d.tl.BackgroundTransparency = 1
-                        d.tl.Font = Enum.Font.GothamBold
-                        d.tl.TextSize = 11
-                        d.tl.TextStrokeTransparency = 0.2
-                    end
-                    local top = hrp.Position + Vector3.new(0, 3, 0)
-                    local bottom = hrp.Position - Vector3.new(0, 3, 0)
-                    local topV, topVis = cam:WorldToViewportPoint(top)
-                    local botV, botVis = cam:WorldToViewportPoint(bottom)
-                    if topVis and botVis and topV.Z > 0 then
-                        local x = topV.X
-                        local y1, y2 = topV.Y, botV.Y
-                        local h = math.abs(y2 - y1)
-                        local w = h * 0.55
-                        local cx = x - w/2
-                        local cy = math.min(y1, y2)
-
-                        d.box.Visible = true
-                        d.box.Position = UDim2.fromOffset(cx, cy)
-                        d.box.Size = UDim2.fromOffset(w, h)
-
-                        local th = 1
-                        local cl = math.min(w, h) * 0.28
-                        -- 4 corner segments
-                        d.corners[1].Position = UDim2.fromOffset(0, 0)
-                        d.corners[1].Size = UDim2.fromOffset(cl, th)
-                        d.corners[2].Position = UDim2.fromOffset(w - cl, 0)
-                        d.corners[2].Size = UDim2.fromOffset(cl, th)
-                        d.corners[3].Position = UDim2.fromOffset(0, 0)
-                        d.corners[3].Size = UDim2.fromOffset(th, cl)
-                        d.corners[4].Position = UDim2.fromOffset(w - th, 0)
-                        d.corners[4].Size = UDim2.fromOffset(th, cl)
-                        -- доп. нижние углы
-                        local c5 = d.corners[5] or makeBoxLine(d.box)
-                        local c6 = d.corners[6] or makeBoxLine(d.box)
-                        local c7 = d.corners[7] or makeBoxLine(d.box)
-                        local c8 = d.corners[8] or makeBoxLine(d.box)
-                        d.corners[5], d.corners[6], d.corners[7], d.corners[8] = c5, c6, c7, c8
-
-                        c5.Position = UDim2.fromOffset(0, h - th)
-                        c5.Size = UDim2.fromOffset(cl, th)
-                        c6.Position = UDim2.fromOffset(w - cl, h - th)
-                        c6.Size = UDim2.fromOffset(cl, th)
-                        c7.Position = UDim2.fromOffset(0, h - cl)
-                        c7.Size = UDim2.fromOffset(th, cl)
-                        c8.Position = UDim2.fromOffset(w - th, h - cl)
-                        c8.Size = UDim2.fromOffset(th, cl)
-
-                        for _, line in ipairs(d.corners) do
-                            line.Visible = true
-                            line.BackgroundColor3 = col
-                        end
-
-                        d.hpBar.Visible = true
-                        d.hpBar.Position = UDim2.fromOffset(cx - 5, cy)
-                        d.hpBar.Size = UDim2.fromOffset(3, h)
-                        local hp = hum.Health / hum.MaxHealth
-                        d.hpFill.Size = UDim2.new(1, 0, hp, 0)
-                        d.hpFill.Position = UDim2.new(0, 0, 1 - hp, 0)
-                        d.hpFill.BackgroundColor3 = Color3.fromRGB(75, 255, 125):Lerp(Color3.fromRGB(255,65,65), 1 - hp)
-
-                        d.bb.Adornee = hrp
-                        d.tl.TextColor3 = col
-                        local distText = myHRP and (" [" .. math.floor((myHRP.Position - hrp.Position).Magnitude) .. "m]") or ""
-                        d.tl.Text = p.Name .. distText .. (hunter and " [HUNTER]" or "")
-                    else
-                        d.box.Visible = false
-                        d.hpBar.Visible = false
-                        if d.bb then d.bb.Enabled = false end
-                    end
-                    if d.bb then d.bb.Enabled = true end
-
-                -- Mode 3: Chams (яркий силуэт сквозь стены, без текста)
-                elseif EspMode == 3 then
-                    if not d.hl then
-                        d.hl = Instance.new("Highlight")
-                        d.hl.FillTransparency = 0.35
-                        d.hl.OutlineTransparency = 0
-                        d.hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-                        d.hl.Parent = char
-                    end
-                    d.hl.Adornee = char
-                    d.hl.FillColor = col
-                    d.hl.OutlineColor = col
+                    d.bb.Parent = char
+                    d.tl = Instance.new("TextLabel", d.bb)
+                    d.tl.Size = UDim2.new(1, 0, 1, 0)
+                    d.tl.BackgroundTransparency = 1
+                    d.tl.Font = Enum.Font.Gotham
+                    d.tl.TextSize = 12
+                    d.tl.TextStrokeTransparency = 0.2
                 end
-            else
-                if espData[p] then clearEspPlayer(p) end
+                d.bb.Adornee = hrp
+                d.tl.TextColor3 = col
+                local distText = myHRP and (" [" .. math.floor((myHRP.Position - hrp.Position).Magnitude) .. "m]") or ""
+                d.tl.Text = p.Name .. distText .. (isHunter(p) and " [HUNTER]" or "")
+            elseif espData[p] then
+                clearEspPlayer(p)
             end
         end
     end
 end
 
--- ============================================================
--- ANTI VOID
--- ============================================================
+local function updateEsp()
+    if not EspOn then return end
+    updateEspMode1()
+end
+
 local function updateAntiVoid()
     local hrp, hum = getHRP(), getHumanoid()
     if not hrp then return end
@@ -1679,9 +1455,6 @@ local function updateAntiVoid()
     end
 end
 
--- ============================================================
--- UNLOAD
--- ============================================================
 local function unloadScript()
     UNLOADED = true
     pcall(function() if FlyOn then setFly(false) end end)
@@ -1699,9 +1472,61 @@ local function unloadScript()
 end
 unloadBtn.MouseButton1Click:Connect(unloadScript)
 
--- ============================================================
+-- SKINCHANGER
+local originalDesc = nil
+local skinLoading = false
+
+local function captureOriginalDesc()
+    if originalDesc then return originalDesc end
+    local ok, desc = pcall(function()
+        return Players:GetHumanoidDescriptionFromUserId(plr.UserId)
+    end)
+    if ok and desc then originalDesc = desc end
+    return originalDesc
+end
+
+local function applyDesc(desc)
+    if not desc then return false end
+    local char = plr.Character
+    if not char then return false end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return false end
+    local ok = pcall(function() hum:ApplyDescription(desc) end)
+    return ok
+end
+
+local function resetSkin()
+    local desc = captureOriginalDesc()
+    if desc then
+        applyDesc(desc)
+    else
+        local ok, d = pcall(function()
+            return Players:GetHumanoidDescriptionFromUserId(plr.UserId)
+        end)
+        if ok and d then
+            originalDesc = d
+            applyDesc(d)
+        end
+    end
+end
+
+local function applySkinByUserId(uid)
+    if skinLoading then return end
+    if type(uid) ~= "number" then return end
+    skinLoading = true
+    if not originalDesc then captureOriginalDesc() end
+    task.spawn(function()
+        local ok, desc = pcall(function()
+            return Players:GetHumanoidDescriptionFromUserId(uid)
+        end)
+        if ok and desc then
+            applyDesc(desc)
+        end
+        skinLoading = false
+    end)
+end
+
 -- LOADERS
--- ============================================================
 local function clearAll()
     for _, c in ipairs(leftCol:GetChildren()) do
         if c:IsA("Frame") then c:Destroy() end
@@ -1712,14 +1537,14 @@ local function clearAll()
     currentCardSide = "Left"
     espModeButtons = {}
     espModeContainer = nil
+    freecamSliderContainer = nil
 end
 
 local function loadMovement()
     clearAll()
     local fly = newCard("Fly")
     addToggleBind(fly, "Fly", FlyOn, function(s)
-        setFly(s)
-        if uiRefs.Fly then uiRefs.Fly.Set(s) end
+        setFly(s); if uiRefs.Fly then uiRefs.Fly.Set(s) end
     end, "Fly")
     addSlider(fly, "Fly Speed", 10, 200, FlySpeed, function(v) FlySpeed = v end)
 
@@ -1740,16 +1565,14 @@ local function loadMovement()
 
     local nc = newCard("Noclip")
     addToggleBind(nc, "Noclip", NoClipOn, function(s)
-        setNoClip(s)
-        if uiRefs.NoClip then uiRefs.NoClip.Set(s) end
+        setNoClip(s); if uiRefs.NoClip then uiRefs.NoClip.Set(s) end
     end, "NoClip")
 
+    -- Teleport (без кнопки TP to Mouse)
     local tp = newCard("Teleport")
     addToggleBind(tp, "Click TP", TPOn, function(s)
-        TPOn = s
-        if uiRefs.TP then uiRefs.TP.Set(s) end
+        TPOn = s; if uiRefs.TP then uiRefs.TP.Set(s) end
     end, "TP")
-    addButton(tp, "TP to Mouse", function() teleportToMouse() end)
 end
 
 local function loadCombat()
@@ -1757,13 +1580,10 @@ local function loadCombat()
     local tb = newCard("Trigger Bot")
     addToggle(tb, "Trigger Bot", TriggerBotOn, function(s) TriggerBotOn = s end, "TriggerBot")
     addSlider(tb, "Range", 5, 30, TriggerRange, function(v) TriggerRange = v end)
-
     local tb2 = newCard("Auto Throw")
     addToggle(tb2, "Auto Throw Bomb", AutoThrowOn, function(s) AutoThrowOn = s end, "AutoThrow")
-
     local af = newCard("Anti Flash")
     addToggle(af, "Anti Flash", AntiFlashOn, function(s) setAntiFlash(s) end, "AntiFlash")
-
     local w = newCard("Weapon")
     addToggle(w, "TP Kill", TPKillOn, function(s) TPKillOn = s end)
 end
@@ -1779,13 +1599,18 @@ local function loadVisuals()
     buildEspModeButtons(esp)
 
     local camCard = newCard("Camera")
-    addToggle(camCard, "Freecam", FreecamOn, function(s) setFreecam(s) end, "Freecam")
-    addSlider(camCard, "Freecam Speed", 10, 200, freecamSpeed, function(v) freecamSpeed = v end)
+    addToggleBind(camCard, "Freecam", FreecamOn, function(s)
+        setFreecam(s)
+        animateFreecamSlider(s)
+    end, "Freecam")
+    task.defer(function()
+        buildFreecamSlider(camCard)
+        if FreecamOn then animateFreecamSlider(true) end
+    end)
 
     local fb = newCard("Lighting")
     addToggleBind(fb, "Fullbright", FullbrightOn, function(s)
-        setFullbright(s)
-        if uiRefs.Fullbright then uiRefs.Fullbright.Set(s) end
+        setFullbright(s); if uiRefs.Fullbright then uiRefs.Fullbright.Set(s) end
     end, "Fullbright")
 end
 
@@ -1794,16 +1619,36 @@ local function loadMisc()
     local em = newCard("Emote")
     addToggle(em, "Emote While Running", EmoteRunOn, function(s) setEmoteRun(s) end, "EmoteRun")
 
-    local ui = newCard("UI")
-    addToggle(ui, "Show Round Button", SushiVisible, function(s)
-        SushiVisible = s
-        sushi.Visible = s
+    local sk = newCard("Skinchanger")
+    local skins = {
+        {"Reset (Default)", nil},
+        {"Builderman", 156},
+        {"Shedletsky", 261},
+        {"John Doe", 323},
+        {"Matt Dusek", 366},
+        {"Stickmasterluke", 4732},
+        {"Erik.Cassel", 1531256},
+        {"Roblox", 1},
+        {"Guest", 27184506},
+    }
+    for _, item in ipairs(skins) do
+        local name, uid = item[1], item[2]
+        addButton(sk, name, function()
+            if uid == nil then resetSkin()
+            else applySkinByUserId(uid) end
+        end)
+    end
+
+    -- Mobile Button (был UI)
+    local mob = newCard("Mobile Button")
+    addToggle(mob, "Show Round Button", SushiVisible, function(s)
+        SushiVisible = s; sushi.Visible = s
     end, "SushiBtn")
 
+    -- Keybind List под Mobile Button
     local kbCard = newCard("Keybind List")
     addToggle(kbCard, "Show Binds", KeyListOn, function(s)
-        KeyListOn = s
-        keyFrame.Visible = s
+        KeyListOn = s; keyFrame.Visible = s
     end, "KeyList")
 end
 
@@ -1814,16 +1659,13 @@ local function loadClient()
         game:GetService("TeleportService"):Teleport(game.PlaceId, plr)
     end)
     addToggle(c, "FPS Boost", FpsBoostOn, function(s)
-        setFpsBoost(s)
-        if uiRefs.FpsBoost then uiRefs.FpsBoost.Set(s) end
+        setFpsBoost(s); if uiRefs.FpsBoost then uiRefs.FpsBoost.Set(s) end
     end, "FpsBoost")
 end
 
 loaders = {loadMovement, loadCombat, loadVisuals, loadMisc, loadClient}
 
--- ============================================================
--- DRAG
--- ============================================================
+-- DRAG MAIN
 local dragging, dragStart, startPos = false, nil, nil
 logo.InputBegan:Connect(function(i)
     if i.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -1844,8 +1686,7 @@ end)
 local sDrag, sMoved, sStart, sPos = false, 0, nil, nil
 sushi.InputBegan:Connect(function(i)
     if i.UserInputType == Enum.UserInputType.MouseButton1 then
-        sDrag = true; sMoved = 0
-        sStart = i.Position; sPos = sushi.Position
+        sDrag = true; sMoved = 0; sStart = i.Position; sPos = sushi.Position
     end
 end)
 UIS.InputChanged:Connect(function(i)
@@ -1889,11 +1730,13 @@ UIS.InputBegan:Connect(function(input, gp)
         return
     end
     if gp then return end
+
     if input.KeyCode == Enum.KeyCode.RightShift then
         menuOpen = not menuOpen
         main.Visible = menuOpen
         return
     end
+
     if bindMatches(Binds.Fly, input) then
         FlyOn = not FlyOn; setFly(FlyOn)
         if uiRefs.Fly then uiRefs.Fly.Set(FlyOn) end
@@ -1905,6 +1748,11 @@ UIS.InputBegan:Connect(function(input, gp)
     elseif bindMatches(Binds.Fullbright, input) then
         FullbrightOn = not FullbrightOn; setFullbright(FullbrightOn)
         if uiRefs.Fullbright then uiRefs.Fullbright.Set(FullbrightOn) end
+    elseif bindMatches(Binds.Freecam, input) then
+        FreecamOn = not FreecamOn
+        setFreecam(FreecamOn)
+        animateFreecamSlider(FreecamOn)
+        if uiRefs.Freecam then uiRefs.Freecam.Set(FreecamOn) end
     end
 end)
 
@@ -1926,13 +1774,11 @@ plr.CharacterAdded:Connect(function(char)
     if FreecamOn then
         FreecamOn = false
         setFreecam(false)
+        animateFreecamSlider(false)
         if uiRefs.Freecam then uiRefs.Freecam.Set(false) end
     end
 end)
 
--- ============================================================
--- MAIN LOOP
--- ============================================================
 local heartbeatAcc = 0
 RunService.Heartbeat:Connect(function(dt)
     if UNLOADED then return end
@@ -1953,6 +1799,11 @@ end)
 
 setTab(1)
 refreshKeyList()
+
+task.spawn(function()
+    task.wait(1)
+    captureOriginalDesc()
+end)
 
 StarterGui:SetCore("SendNotification", {
     Title = "Tolkahack " .. VERSION,

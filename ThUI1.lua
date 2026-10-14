@@ -46,18 +46,6 @@ TK.THEME = {}
 for k,v in pairs(TK.THEMES.Black) do TK.THEME[k]=v end
 TK.HUNTER_COLOR = Color3.fromRGB(255,60,60)
 
--- WATERMARK
-local wmGui = Instance.new("ScreenGui")
-...
-task.spawn(function()
-    while not TK.UNLOADED do
-        task.wait(1)
-        local ok, fps = pcall(function() return math.floor(workspace:GetRealPhysicsFPS()) end)
-        if not ok or not fps or fps < 1 then fps = 60 end
-        wmText.Text = string.format("Tolkahack | Release | %s | %d FPS | %s", TK.EXECUTOR, fps, os.date("%H:%M:%S"))
-    end
-end)
-
 -- MAIN GUI
 local gui=Instance.new("ScreenGui")
 gui.Name="tk_ui_main" gui.ResetOnSpawn=false

@@ -48,45 +48,13 @@ TK.HUNTER_COLOR = Color3.fromRGB(255,60,60)
 
 -- WATERMARK
 local wmGui = Instance.new("ScreenGui")
-wmGui.Name="tk_watermark" wmGui.ResetOnSpawn=false wmGui.DisplayOrder=150
-wmGui.Parent=TK.plr:WaitForChild("PlayerGui")
-TK.wmGui=wmGui
-local wmFrame=Instance.new("Frame")
-wmFrame.Size=UDim2.new(0,260,0,24) wmFrame.Position=UDim2.new(0,10,0,10)
-wmFrame.BackgroundColor3=TK.THEME.Bg wmFrame.BorderSizePixel=0 wmFrame.Parent=wmGui
-Instance.new("UICorner",wmFrame).CornerRadius=UDim.new(0,6)
-TK.wmFrame=wmFrame
-local wmStroke=Instance.new("UIStroke",wmFrame) wmStroke.Color=TK.THEME.Border
-TK.wmStroke=wmStroke
-local wmAccent=Instance.new("Frame",wmFrame)
-wmAccent.Size=UDim2.new(0,3,1,-8) wmAccent.Position=UDim2.new(0,0,0,4)
-wmAccent.BackgroundColor3=TK.THEME.Accent wmAccent.BorderSizePixel=0
-Instance.new("UICorner",wmAccent).CornerRadius=UDim.new(1,0)
-TK.wmAccent=wmAccent
-local wmText=Instance.new("TextLabel",wmFrame)
-wmText.Size=UDim2.new(1,-16,1,0) wmText.Position=UDim2.new(0,12,0,0)
-wmText.BackgroundTransparency=1 wmText.Font=Enum.Font.GothamBold
-wmText.TextSize=11 wmText.TextColor3=TK.THEME.Text
-wmText.TextXAlignment=Enum.TextXAlignment.Left
-wmText.Text="Tolkahack | Release | "..TK.EXECUTOR
-TK.wmText=wmText
-local wmDrag,wmStart=false,nil
-wmFrame.InputBegan:Connect(function(i)
-    if i.UserInputType==Enum.UserInputType.MouseButton1 then wmDrag=true wmStart=i.Position-wmFrame.AbsolutePosition end
-end)
-TK.UIS.InputChanged:Connect(function(i)
-    if wmDrag and i.UserInputType==Enum.UserInputType.MouseMovement then
-        wmFrame.Position=UDim2.fromOffset(i.Position.X-wmStart.X,i.Position.Y-wmStart.Y)
-    end
-end)
-TK.UIS.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 then wmDrag=false end end)
-
+...
 task.spawn(function()
     while not TK.UNLOADED do
         task.wait(1)
-        local ok,fps=pcall(function() return math.floor(workspace:GetRealPhysicsFPS()) end)
-        if not ok or not fps or fps<1 then fps=60 end
-        wmText.Text=string.format("Tolkahack | Release | %s | %d FPS | %s",TK.EXECUTOR,fps,os.date("%H:%M:%S"))
+        local ok, fps = pcall(function() return math.floor(workspace:GetRealPhysicsFPS()) end)
+        if not ok or not fps or fps < 1 then fps = 60 end
+        wmText.Text = string.format("Tolkahack | Release | %s | %d FPS | %s", TK.EXECUTOR, fps, os.date("%H:%M:%S"))
     end
 end)
 

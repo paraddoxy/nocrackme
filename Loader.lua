@@ -1,32 +1,18 @@
 --[[
     TOLKAHACK LOADER
-    Загружает все части в один скрипт.
-    
-    ВАРИАНТ A — локально: положи PART1-3 в workspace/Takay/ и запусти этот файл
-    ВАРИАНТ B — с GitHub: залей PART1-3 в репо и замени GITHUB_URL
+    Загружает ThUI1 + ThUI2 + ThUI3 в один скрипт
 --]]
 
-local GITHUB_URL = "https://raw.githubusercontent.com/ТВОЙ_НИК/ТВОЙ_РЕПО/main/" -- если используешь GitHub
-
-local MODE = "local" -- "local" или "github"
-
-local PARTS = {"PART1.lua", "PART2.lua", "PART3.lua"}
-local FOLDER = "Takay/" -- только для локального режима
+local PARTS = {"ThUI1.lua", "ThUI2.lua", "ThUI3.lua"}
+local FOLDER = "" -- если файлы лежат в Takay/ — поменяй на "Takay/"
 
 local function loadPart(name)
-    local code
-    if MODE == "github" then
-        local ok, res = pcall(function() return game:HttpGet(GITHUB_URL .. name) end)
-        if not ok then return nil, "не удалось скачать с GitHub" end
-        code = res
-    else
-        if not isfile(FOLDER .. name) then
-            return nil, "файл не найден: " .. FOLDER .. name
-        end
-        local ok, res = pcall(readfile, FOLDER .. name)
-        if not ok then return nil, "не удалось прочитать файл" end
-        code = res
+    local path = FOLDER .. name
+    if not isfile(path) then
+        return nil, "файл не найден: " .. path
     end
+    local ok, code = pcall(readfile, path)
+    if not ok then return nil, "не удалось прочитать" end
     return code
 end
 
@@ -53,10 +39,12 @@ print("[LOADER] Загружаю Tolkahack...")
 
 -- Очистка старых запусков
 pcall(function()
-    if getgenv().TK and getgenv().TK.gui then getgenv().TK.gui:Destroy() end
-    if getgenv().TK and getgenv().TK.wmGui then getgenv().TK.wmGui:Destroy() end
-    if getgenv().TK and getgenv().TK.sushiGui then getgenv().TK.sushiGui:Destroy() end
-    if getgenv().TK and getgenv().TK.keyGui then getgenv().TK.keyGui:Destroy() end
+    if getgenv().TK then
+        if getgenv().TK.gui then getgenv().TK.gui:Destroy() end
+        if getgenv().TK.wmGui then getgenv().TK.wmGui:Destroy() end
+        if getgenv().TK.sushiGui then getgenv().TK.sushiGui:Destroy() end
+        if getgenv().TK.keyGui then getgenv().TK.keyGui:Destroy() end
+    end
 end)
 getgenv().TK = nil
 
@@ -65,15 +53,15 @@ local success = 0
 for _, part in ipairs(PARTS) do
     if runPart(part) then
         success = success + 1
-        print("[LOADER] ✓ " .. part)
+        print("[LOADER] OK " .. part)
     else
-        warn("[LOADER] ✗ " .. part)
+        warn("[LOADER] FAIL " .. part)
     end
     task.wait(0.1)
 end
 
 if success == #PARTS then
-    print("[LOADER] Tolkahack успешно загружен! (" .. success .. "/" .. #PARTS .. ")")
+    print("[LOADER] Tolkahack загружен! (" .. success .. "/" .. #PARTS .. ")")
 else
     warn("[LOADER] Загружено только " .. success .. " из " .. #PARTS .. " частей")
 end

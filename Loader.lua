@@ -1,23 +1,33 @@
 --[[
     TOLKAHACK LOADER
-    Загружает ThUI1 + ThUI2 + ThUI3 в один скрипт
+    Загружает ThUI1 + ThUI2 + ThUI3 с GitHub
 --]]
 
-local PARTS = {"ThUI1.lua", "ThUI2.lua", "ThUI3.lua"}
-local FOLDER = "" -- если файлы лежат в Takay/ — поменяй на "Takay/"
+local BASE_URL = "https://raw.githubusercontent.com/paraddoxy/nocrackme/main/"
 
-local function loadPart(name)
-    local path = FOLDER .. name
-    if not isfile(path) then
-        return nil, "файл не найден: " .. path
+local PARTS = {
+    "ThUI1.lua",
+    "ThUI2.lua",
+    "ThUI3.lua",
+}
+
+local function fetchPart(name)
+    local url = BASE_URL .. name
+    local ok, code = pcall(function()
+        return game:HttpGet(url)
+    end)
+    if not ok or not code or code == "" then
+        return nil, "не удалось скачать " .. name
     end
-    local ok, code = pcall(readfile, path)
-    if not ok then return nil, "не удалось прочитать" end
+    -- GitHub может вернуть 404-страницу — проверяем по размеру
+    if #code < 50 then
+        return nil, "файл пустой или не найден: " .. name
+    end
     return code
 end
 
 local function runPart(name)
-    local code, err = loadPart(name)
+    local code, err = fetchPart(name)
     if not code then
         warn("[LOADER] " .. name .. " — " .. tostring(err))
         return false
@@ -35,7 +45,7 @@ local function runPart(name)
     return true
 end
 
-print("[LOADER] Загружаю Tolkahack...")
+print("[LOADER] Загружаю Tolkahack с GitHub...")
 
 -- Очистка старых запусков
 pcall(function()
@@ -48,16 +58,16 @@ pcall(function()
 end)
 getgenv().TK = nil
 
--- Запуск
+-- Запуск частей по очереди
 local success = 0
 for _, part in ipairs(PARTS) do
     if runPart(part) then
         success = success + 1
-        print("[LOADER] OK " .. part)
+        print("[LOADER] OK — " .. part)
     else
-        warn("[LOADER] FAIL " .. part)
+        warn("[LOADER] FAIL — " .. part)
     end
-    task.wait(0.1)
+    task.wait(0.15)
 end
 
 if success == #PARTS then

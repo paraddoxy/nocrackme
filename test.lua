@@ -8,7 +8,7 @@ local plr        = Players.LocalPlayer
 local cam        = workspace.CurrentCamera
 local mouse      = plr:GetMouse()
 
-local VERSION = "v1.8"
+local VERSION = "v1.8(Globalfix)"
 
 local FlyOn, NoClipOn, TPOn = false, false, false
 local JumpOn, JumpValue = true, 55
@@ -24,6 +24,7 @@ local KeyListOn, FreecamOn, FullbrightOn, FpsBoostOn = false, false, false, fals
 local SushiVisible = true
 local FlySpeed = 60
 local FreecamSpeed = 50
+local FullbrightBrightness = 3
 local currentTab = 1
 local UNLOADED = false
 local CurrentTheme = "Black"
@@ -62,6 +63,7 @@ local emoteAnimConn = nil
 local espModeContainer = nil
 local espModeButtons = {}
 local freecamSliderContainer = nil
+local fullbrightSliderContainer = nil
 
 local avatarClickCount, avatarLastClick = 0, 0
 local soonOpened = false
@@ -259,18 +261,16 @@ nickLbl.Font = Enum.Font.GothamBold
 nickLbl.TextSize = 12
 nickLbl.TextXAlignment = Enum.TextXAlignment.Left
 
--- Build под ником — крупнее
-local buildLbl = Instance.new("TextLabel", footer)
-buildLbl.Size = UDim2.new(1, -180, 0, 14)
-buildLbl.Position = UDim2.new(0, 44, 0.5, 0)
-buildLbl.BackgroundTransparency = 1
-buildLbl.Text = "Build: Nightly"
-buildLbl.TextColor3 = THEME.Accent
-buildLbl.Font = Enum.Font.GothamBold
-buildLbl.TextSize = 13
-buildLbl.TextXAlignment = Enum.TextXAlignment.Left
+local BuildLbl = Instance.new("TextLabel", footer)
+BuildLbl.Size = UDim2.new(1, -180, 0, 14)
+BuildLbl.Position = UDim2.new(0, 44, 0.5, 0)
+BuildLbl.BackgroundTransparency = 1
+BuildLbl.Text = "Build: Release"
+BuildLbl.TextColor3 = THEME.Accent
+BuildLbl.Font = Enum.Font.Gotham
+BuildLbl.TextSize = 10
+BuildLbl.TextXAlignment = Enum.TextXAlignment.Left
 
--- Version справа
 local versionLbl = Instance.new("TextLabel", footer)
 versionLbl.Size = UDim2.new(0, 180, 1, 0)
 versionLbl.Position = UDim2.new(1, -190, 0, 0)
@@ -278,10 +278,9 @@ versionLbl.BackgroundTransparency = 1
 versionLbl.Text = VERSION
 versionLbl.TextColor3 = THEME.Accent
 versionLbl.Font = Enum.Font.GothamBold
-versionLbl.TextSize = 18
+versionLbl.TextSize = 14
 versionLbl.TextXAlignment = Enum.TextXAlignment.Right
 
--- SOON OVERLAY
 local soonFrame = Instance.new("Frame", main)
 soonFrame.Size = UDim2.new(1, 0, 1, 0)
 soonFrame.BackgroundColor3 = Color3.fromRGB(0,0,0)
@@ -321,7 +320,6 @@ avatar.MouseButton1Click:Connect(function()
     end
 end)
 
--- SETTINGS
 local settingsPanel = Instance.new("Frame", main)
 settingsPanel.Size = UDim2.new(0, 360, 0, 340)
 settingsPanel.Position = UDim2.new(0.5, -180, 0.5, -170)
@@ -447,7 +445,6 @@ Instance.new("UICorner", closeSettings).CornerRadius = UDim.new(0, 8)
 closeSettings.MouseButton1Click:Connect(function() settingsPanel.Visible = false end)
 gearBtn.MouseButton1Click:Connect(function() settingsPanel.Visible = not settingsPanel.Visible end)
 
--- SUSHI
 local sushiGui = Instance.new("ScreenGui")
 sushiGui.Name = "tk_sushi"; sushiGui.ResetOnSpawn = false
 sushiGui.DisplayOrder = 6; sushiGui.Parent = plr.PlayerGui
@@ -462,7 +459,6 @@ Instance.new("UICorner", sushi).CornerRadius = UDim.new(1, 0)
 local sushiStroke = Instance.new("UIStroke", sushi)
 sushiStroke.Color = THEME.Accent; sushiStroke.Thickness = 2
 
--- KEYBIND LIST
 local keyGui = Instance.new("ScreenGui")
 keyGui.Name = "tk_keys"; keyGui.ResetOnSpawn = false
 keyGui.DisplayOrder = 5; keyGui.Parent = plr.PlayerGui
@@ -580,11 +576,17 @@ local function refreshKeyList()
     end
 end
 
--- UI BUILDERS
-local currentCardSide = "Left"
-local function newCard(title)
-    local side = currentCardSide == "Left" and leftCol or rightCol
-    currentCardSide = currentCardSide == "Left" and "Right" or "Left"
+local function newCard(title, forcedSide)
+    local side
+    if forcedSide == "Left" then side = leftCol
+    elseif forcedSide == "Right" then side = rightCol
+    else
+        if not _G._tkSide or _G._tkSide == "Right" then
+            _G._tkSide = "Left"; side = leftCol
+        else
+            _G._tkSide = "Right"; side = rightCol
+        end
+    end
     local card = Instance.new("Frame")
     card.Size = UDim2.new(1, 0, 0, 0)
     card.AutomaticSize = Enum.AutomaticSize.Y
@@ -775,7 +777,7 @@ local function addButton(card, label, cb)
     return btn
 end
 
-local function buildEspModeButtons(parent)
+local function BuildEspModeButtons(parent)
     espModeContainer = Instance.new("Frame", parent)
     espModeContainer.Size = UDim2.new(1, 0, 0, EspOn and 30 or 0)
     espModeContainer.BackgroundTransparency = 1
@@ -831,7 +833,7 @@ local function animateEspModes(show)
     end
 end
 
-local function buildFreecamSlider(parent)
+local function BuildFreecamSlider(parent)
     freecamSliderContainer = Instance.new("Frame", parent)
     freecamSliderContainer.Size = UDim2.new(1, 0, 0, FreecamOn and 34 or 0)
     freecamSliderContainer.BackgroundTransparency = 1
@@ -869,7 +871,47 @@ local function animateFreecamSlider(show)
     end
 end
 
--- CATEGORIES
+local function BuildFullbrightSlider(parent)
+    fullbrightSliderContainer = Instance.new("Frame", parent)
+    fullbrightSliderContainer.Size = UDim2.new(1, 0, 0, FullbrightOn and 34 or 0)
+    fullbrightSliderContainer.BackgroundTransparency = 1
+    fullbrightSliderContainer.ClipsDescendants = true
+    fullbrightSliderContainer.Visible = FullbrightOn
+    local row = Instance.new("TextButton", fullbrightSliderContainer)
+    row.Size = UDim2.new(1, 0, 0, 34)
+    row.BackgroundColor3 = THEME.Row
+    row.Text = ""; row.AutoButtonColor = false
+    row.BorderSizePixel = 0
+    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 7)
+    local lbl = Instance.new("TextLabel", row)
+    lbl.Size = UDim2.new(0.4, 0, 1, 0); lbl.Position = UDim2.new(0, 12, 0, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.Text = "Brightness"; lbl.TextColor3 = THEME.Text
+    lbl.Font = Enum.Font.Gotham; lbl.TextSize = 12
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    makeSlider(row, UDim2.new(1, -150, 0.5, -8), UDim2.new(0, 140, 0, 16), 1, 10, FullbrightBrightness, function(v)
+        FullbrightBrightness = v
+        if FullbrightOn then
+            pcall(function() Lighting.Brightness = v end)
+        end
+    end)
+end
+
+local function animateFullbrightSlider(show)
+    if not fullbrightSliderContainer then return end
+    if show then
+        fullbrightSliderContainer.Visible = true
+        Tween:Create(fullbrightSliderContainer, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+            {Size = UDim2.new(1, 0, 0, 34)}):Play()
+    else
+        Tween:Create(fullbrightSliderContainer, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+            {Size = UDim2.new(1, 0, 0, 0)}):Play()
+        task.delay(0.25, function()
+            if fullbrightSliderContainer and not FullbrightOn then fullbrightSliderContainer.Visible = false end
+        end)
+    end
+end
+
 local categories = {
     {name="Movement", icon="M"},
     {name="Combat",   icon="C"},
@@ -952,7 +994,7 @@ function applyTheme(name)
     footerStroke.Color = THEME.CardBorder
     avatar.BackgroundColor3 = THEME.ControlBg
     nickLbl.TextColor3 = THEME.Text
-    buildLbl.TextColor3 = THEME.Accent
+    BuildLbl.TextColor3 = THEME.Accent
     versionLbl.TextColor3 = THEME.Accent
     sushi.BackgroundColor3 = THEME.Bg
     sushi.TextColor3 = THEME.Accent
@@ -1057,7 +1099,42 @@ local function teleportToMouse()
     if FlyOn then flyDesired = target end
 end
 
+-- ============================================================
+-- JUMP (fixed)
+-- ============================================================
+local function setJumpEnabled(on)
+    JumpOn = on
+    local hum = getHumanoid()
+    if not hum then return end
+    if on then
+        pcall(function()
+            hum.JumpPower = JumpValue
+            hum.JumpHeight = JumpValue / 7
+            hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+        end)
+    else
+        pcall(function()
+            hum.JumpPower = 0
+            hum.JumpHeight = 0
+            hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
+        end)
+    end
+end
+
+local function updateJumpState()
+    local hum = getHumanoid()
+    if not hum then return end
+    if not JumpOn then
+        if hum.JumpPower ~= 0 then pcall(function() hum.JumpPower = 0 end) end
+        if hum.JumpHeight ~= 0 then pcall(function() hum.JumpHeight = 0 end) end
+        pcall(function() hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, false) end)
+    else
+        if hum.JumpPower ~= JumpValue then pcall(function() hum.JumpPower = JumpValue end) end
+    end
+end
+
 local function doJump()
+    if not JumpOn then return end
     local hum, hrp = getHumanoid(), getHRP()
     if not hum or not hrp then return end
     if hum.FloorMaterial ~= Enum.Material.Air then
@@ -1066,6 +1143,7 @@ local function doJump()
             hrp.AssemblyLinearVelocity.X, JumpValue, hrp.AssemblyLinearVelocity.Z)
     end
 end
+
 local function setFly(on)
     FlyOn = on
     local hrp = getHRP()
@@ -1159,6 +1237,7 @@ local function setFullbright(on)
         fbOriginal = {}
         for p in pairs(fbProps) do fbOriginal[p] = Lighting[p] end
         for p, v in pairs(fbProps) do pcall(function() Lighting[p] = v end) end
+        pcall(function() Lighting.Brightness = FullbrightBrightness end)
     else
         if fbOriginal then
             for p, v in pairs(fbOriginal) do pcall(function() Lighting[p] = v end) end
@@ -1472,61 +1551,6 @@ local function unloadScript()
 end
 unloadBtn.MouseButton1Click:Connect(unloadScript)
 
--- SKINCHANGER
-local originalDesc = nil
-local skinLoading = false
-
-local function captureOriginalDesc()
-    if originalDesc then return originalDesc end
-    local ok, desc = pcall(function()
-        return Players:GetHumanoidDescriptionFromUserId(plr.UserId)
-    end)
-    if ok and desc then originalDesc = desc end
-    return originalDesc
-end
-
-local function applyDesc(desc)
-    if not desc then return false end
-    local char = plr.Character
-    if not char then return false end
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hum then return false end
-    local ok = pcall(function() hum:ApplyDescription(desc) end)
-    return ok
-end
-
-local function resetSkin()
-    local desc = captureOriginalDesc()
-    if desc then
-        applyDesc(desc)
-    else
-        local ok, d = pcall(function()
-            return Players:GetHumanoidDescriptionFromUserId(plr.UserId)
-        end)
-        if ok and d then
-            originalDesc = d
-            applyDesc(d)
-        end
-    end
-end
-
-local function applySkinByUserId(uid)
-    if skinLoading then return end
-    if type(uid) ~= "number" then return end
-    skinLoading = true
-    if not originalDesc then captureOriginalDesc() end
-    task.spawn(function()
-        local ok, desc = pcall(function()
-            return Players:GetHumanoidDescriptionFromUserId(uid)
-        end)
-        if ok and desc then
-            applyDesc(desc)
-        end
-        skinLoading = false
-    end)
-end
-
--- LOADERS
 local function clearAll()
     for _, c in ipairs(leftCol:GetChildren()) do
         if c:IsA("Frame") then c:Destroy() end
@@ -1534,26 +1558,29 @@ local function clearAll()
     for _, c in ipairs(rightCol:GetChildren()) do
         if c:IsA("Frame") then c:Destroy() end
     end
-    currentCardSide = "Left"
+    _G._tkSide = nil
     espModeButtons = {}
     espModeContainer = nil
     freecamSliderContainer = nil
+    fullbrightSliderContainer = nil
 end
 
 local function loadMovement()
     clearAll()
-    local fly = newCard("Fly")
+    local fly = newCard("Fly", "Left")
     addToggleBind(fly, "Fly", FlyOn, function(s)
         setFly(s); if uiRefs.Fly then uiRefs.Fly.Set(s) end
     end, "Fly")
     addSlider(fly, "Fly Speed", 10, 200, FlySpeed, function(v) FlySpeed = v end)
 
-    local move = newCard("Movement")
-    addToggle(move, "Jump Enabled", JumpOn, function(s) JumpOn = s end, "Jump")
+    local move = newCard("Movement", "Right")
+    addToggle(move, "Jump Enabled", JumpOn, function(s) setJumpEnabled(s) end, "Jump")
     addSlider(move, "Jump Power", 20, 150, JumpValue, function(v)
         JumpValue = v
-        local hum = getHumanoid()
-        if hum then hum.JumpPower = v; hum.JumpHeight = v/7 end
+        if JumpOn then
+            local hum = getHumanoid()
+            if hum then hum.JumpPower = v; hum.JumpHeight = v/7 end
+        end
     end)
     addSlider(move, "Walk Speed", 16, 60, SpeedValue, function(v)
         SpeedValue = v
@@ -1563,13 +1590,12 @@ local function loadMovement()
     end)
     addToggle(move, "Speed Enabled", SpeedOn, function(s) setSpeed(s) end, "Speed")
 
-    local nc = newCard("Noclip")
+    local nc = newCard("Noclip", "Left")
     addToggleBind(nc, "Noclip", NoClipOn, function(s)
         setNoClip(s); if uiRefs.NoClip then uiRefs.NoClip.Set(s) end
     end, "NoClip")
 
-    -- Teleport (без кнопки TP to Mouse)
-    local tp = newCard("Teleport")
+    local tp = newCard("Teleport", "Right")
     addToggleBind(tp, "Click TP", TPOn, function(s)
         TPOn = s; if uiRefs.TP then uiRefs.TP.Set(s) end
     end, "TP")
@@ -1577,76 +1603,60 @@ end
 
 local function loadCombat()
     clearAll()
-    local tb = newCard("Trigger Bot")
+    local tb = newCard("Trigger Bot", "Left")
     addToggle(tb, "Trigger Bot", TriggerBotOn, function(s) TriggerBotOn = s end, "TriggerBot")
     addSlider(tb, "Range", 5, 30, TriggerRange, function(v) TriggerRange = v end)
-    local tb2 = newCard("Auto Throw")
+    local tb2 = newCard("Auto Throw", "Right")
     addToggle(tb2, "Auto Throw Bomb", AutoThrowOn, function(s) AutoThrowOn = s end, "AutoThrow")
-    local af = newCard("Anti Flash")
+    local af = newCard("Anti Flash", "Left")
     addToggle(af, "Anti Flash", AntiFlashOn, function(s) setAntiFlash(s) end, "AntiFlash")
-    local w = newCard("Weapon")
+    local w = newCard("Weapon", "Right")
     addToggle(w, "TP Kill", TPKillOn, function(s) TPKillOn = s end)
 end
 
 local function loadVisuals()
     clearAll()
-    local esp = newCard("ESP")
+    local esp = newCard("ESP", "Left")
     addToggle(esp, "Player ESP", EspOn, function(s)
         EspOn = s
         if not s then clearEsp() end
         animateEspModes(s)
     end, "Esp")
-    buildEspModeButtons(esp)
+    BuildEspModeButtons(esp)
 
-    local camCard = newCard("Camera")
+    local camCard = newCard("Camera", "Right")
     addToggleBind(camCard, "Freecam", FreecamOn, function(s)
         setFreecam(s)
         animateFreecamSlider(s)
     end, "Freecam")
     task.defer(function()
-        buildFreecamSlider(camCard)
+        BuildFreecamSlider(camCard)
         if FreecamOn then animateFreecamSlider(true) end
     end)
 
-    local fb = newCard("Lighting")
+    local fb = newCard("Lighting", "Left")
     addToggleBind(fb, "Fullbright", FullbrightOn, function(s)
-        setFullbright(s); if uiRefs.Fullbright then uiRefs.Fullbright.Set(s) end
+        setFullbright(s)
+        if uiRefs.Fullbright then uiRefs.Fullbright.Set(s) end
+        animateFullbrightSlider(s)
     end, "Fullbright")
+    task.defer(function()
+        BuildFullbrightSlider(fb)
+        if FullbrightOn then animateFullbrightSlider(true) end
+    end)
 end
 
 local function loadMisc()
     clearAll()
-    local em = newCard("Emote")
+    local em = newCard("Emote", "Left")
     addToggle(em, "Emote While Running", EmoteRunOn, function(s) setEmoteRun(s) end, "EmoteRun")
 
-    local sk = newCard("Skinchanger")
-    local skins = {
-        {"Reset (Default)", nil},
-        {"Builderman", 156},
-        {"Shedletsky", 261},
-        {"John Doe", 323},
-        {"Matt Dusek", 366},
-        {"Stickmasterluke", 4732},
-        {"Erik.Cassel", 1531256},
-        {"Roblox", 1},
-        {"Guest", 27184506},
-    }
-    for _, item in ipairs(skins) do
-        local name, uid = item[1], item[2]
-        addButton(sk, name, function()
-            if uid == nil then resetSkin()
-            else applySkinByUserId(uid) end
-        end)
-    end
-
-    -- Mobile Button (был UI)
-    local mob = newCard("Mobile Button")
+    local mob = newCard("Mobile Button", "Right")
     addToggle(mob, "Show Round Button", SushiVisible, function(s)
         SushiVisible = s; sushi.Visible = s
     end, "SushiBtn")
 
-    -- Keybind List под Mobile Button
-    local kbCard = newCard("Keybind List")
+    local kbCard = newCard("Keybind List", "Right")
     addToggle(kbCard, "Show Binds", KeyListOn, function(s)
         KeyListOn = s; keyFrame.Visible = s
     end, "KeyList")
@@ -1654,7 +1664,7 @@ end
 
 local function loadClient()
     clearAll()
-    local c = newCard("Client")
+    local c = newCard("Client", "Left")
     addButton(c, "Rejoin", function()
         game:GetService("TeleportService"):Teleport(game.PlaceId, plr)
     end)
@@ -1665,7 +1675,6 @@ end
 
 loaders = {loadMovement, loadCombat, loadVisuals, loadMisc, loadClient}
 
--- DRAG MAIN
 local dragging, dragStart, startPos = false, nil, nil
 logo.InputBegan:Connect(function(i)
     if i.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -1746,8 +1755,10 @@ UIS.InputBegan:Connect(function(input, gp)
     elseif bindMatches(Binds.TP, input) then
         if TPOn then teleportToMouse() end
     elseif bindMatches(Binds.Fullbright, input) then
-        FullbrightOn = not FullbrightOn; setFullbright(FullbrightOn)
+        FullbrightOn = not FullbrightOn
+        setFullbright(FullbrightOn)
         if uiRefs.Fullbright then uiRefs.Fullbright.Set(FullbrightOn) end
+        animateFullbrightSlider(FullbrightOn)
     elseif bindMatches(Binds.Freecam, input) then
         FreecamOn = not FreecamOn
         setFreecam(FreecamOn)
@@ -1777,6 +1788,17 @@ plr.CharacterAdded:Connect(function(char)
         animateFreecamSlider(false)
         if uiRefs.Freecam then uiRefs.Freecam.Set(false) end
     end
+    if not JumpOn then
+        task.wait(0.2)
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if hum then
+            pcall(function()
+                hum.JumpPower = 0
+                hum.JumpHeight = 0
+                hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
+            end)
+        end
+    end
 end)
 
 local heartbeatAcc = 0
@@ -1785,6 +1807,7 @@ RunService.Heartbeat:Connect(function(dt)
     if FreecamOn then updateFreecam(dt) else updateFly(dt) end
     if NoClipOn then updateNoClipActive() end
     if SpeedOn or EmoteRunOn then keepSpeed() end
+    updateJumpState()
     if not FreecamOn then updateAntiVoid() end
     if TriggerBotOn then updateTriggerBot() end
     if AutoThrowOn then updateAutoThrow() end
@@ -1799,11 +1822,6 @@ end)
 
 setTab(1)
 refreshKeyList()
-
-task.spawn(function()
-    task.wait(1)
-    captureOriginalDesc()
-end)
 
 StarterGui:SetCore("SendNotification", {
     Title = "Tolkahack " .. VERSION,
